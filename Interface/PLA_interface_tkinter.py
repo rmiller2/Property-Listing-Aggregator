@@ -1,23 +1,25 @@
 import PIL
-from PIL import Image
-from PIL import ImageTk
+import subprocess
+import urllib.request
 import tkinter as tk
 import numpy as np
 import matplotlib.pyplot as plt 
+
+from PIL import Image
+from PIL import ImageTk
 from pexpect import pxssh
 from tkinter import filedialog
 from tkinter import messagebox
 from tkinter import *
 from tkinter import ttk
 from pymongo import MongoClient
-import subprocess
-import urllib.request
+from bs4 import BeautifulSoup
 
 client = MongoClient(port=27017)
 db = client.Property_aggregator
 
-
-
+country_list = ["Greece", "Italy", "United States"]
+state_list = ["CA", "WA"]
 
 class mainwindow(tk.Tk):
     def __init__(self, *args, **kwargs):
@@ -28,12 +30,7 @@ class mainwindow(tk.Tk):
         self.geometry("1000x800")         #set the size
         self.resizable(0, 0)              #fix the size
 
-       
-
-
-
-
-
+    
 
         #initial window setup
         container = tk.Frame(self)
@@ -82,19 +79,73 @@ class StatsFrame(tk.Frame):
 
 
         def category_plot_button_action():
-            return_val = subprocess.call(['./test_status.sh ' + range_query_input_1.get()], shell=True)
-            print(return_val)
-            if (return_val == 0)
-                #success
-            elif(return_val == 1)
-                #oops redirect
 
-            #ok this works now and will tell you if your box search is success or failure. 
+            url_check_string = range_query_input_1.get()#get the url that was entered
 
 
+
+            #check it against the recognized urls 
+            if url_check_string.startswith(("https://www.jamesedition.com/real_estate", "https://www.zillow.com/")) == True:
+                return_val = subprocess.call(['./test_status.sh ' + url_check_string], shell=True)
+                print(return_val)
+
+                if (return_val == 0):
+                    #success
+                    #retrieving the listing from the web
+                    subprocess.call(['./get_website.sh ' + url_check_string], shell=True)
+                    soup = BeautifulSoup(open("/Users/richardmiller/Documents/website_file_storage/test_file.html"), "html.parser")
+
+                    listing_dict = {}   #create the dictionary to hold all of the relevant info from the web page to push to the database
+
+                    #retrieve name of listing
+                    headline_retriever = soup.find('h1', attrs={"class":"headline"})#this tests and gets the headline name of the listing 
+                    for string in headline_retriever.stripped_strings:
+                        listing_name = string
+                        listing_dict["Title"] = listing_name
+                        #print(listing_name)
+                        break
+
+                    #retrieve price of listing
+                    price_retriever = soup.find("div", attrs={"class":"price"})#this tests and gets the price of the listing 
+                    for string in price_retriever.stripped_strings:
+                        listing_price = string
+                        listing_dict["Price"] = listing_price
+                        #print(listing_price)
+                        #break
+
+                    #retrieving piece of the detail list
+                    for li in soup.find('ul', {"class":"details-list"}).find_all("li"):
+                        if (li.find('span', {"class":"name"}).getText(strip=True)) == "Location:":
+                            listing_location_string = li.find('span', {"class":"value"}).getText(strip=True)
+                            list_of_location_strings = listing_location_string.split(", ")
+                            for location in list_of_location_strings:
+                                if (location not in country_list and location not in state_list):
+                                    location_city = location
+                                    listing_dict["City"] = location_city
+                                elif (location in state_list):
+                                    location_state = location
+                                    listing_dict["State"] = location_state
+                                elif (location in country_list):
+                                    location_country = location
+                                    listing_dict["Country"] = location_country
+                    
+                    for x, y in listing_dict.items():
+                        print(x, y)
+
+                    subprocess.call(['./remove_website.sh'], shell=True)
+  
+                elif(return_val == 1):
+                    #oops redirect
+                    print("redirect 1")
+                elif(return_val == 2):
+                    #404 error
+                    print("404 error 2")
+            else:
+                print("Not from approved website,error")#print off error
+                #make this a display feature that shows if invalid
+            
         range_query_input_1 = tk.Entry(self, width = 20)
         range_query_input_1.place(x = 300, y = 100)
-
 
         #Launch category plot label
         launch_category_plot_label = tk.Label(self, text="Run Script   ->")
