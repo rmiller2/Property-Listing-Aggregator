@@ -15,11 +15,22 @@ from tkinter import ttk
 from pymongo import MongoClient
 from bs4 import BeautifulSoup
 
-client = MongoClient(port=27017)
-db = client.Property_aggregator
+myclient = MongoClient("mongodb://localhost:27017/")
+mydb = myclient["Property_aggregator"]
+mycol = mydb["Properties"]
 
-country_list = ["Greece", "Italy", "United States"]
-state_list = ["CA", "WA"]
+country_list = ["Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Aruba", "Australia", "Austria", "Bahamas", "Barbados",
+"Belgium", "Belize", "Bermuda", "Bonaire, Sint Eustatius and Saba", "Brazil", "Bulgaria", "Canada", "Cayman Islands", 
+"Chile", "China", "Colombia", "Costa Rica", "Croatia", "Curaçao", "Cyprus", "Czech Republic", "Dominica", "Dominican Republic", "Estonia", "Fiji", "Finland",
+ "France", "French Polynesia", "Germany", "Gibraltar", "Greece", "Grenada", "Honduras", "Hong Kong", "Hungary", "India", "Indonesia", "Ireland", "Italy",
+ "Jamaica", "Japan", "Kazakhstan", "Latvia", "Lithuania", "Luxembourg", "Malaysia", "Maldives", "Mali", "Malta", "Mauritius", "Mexico", "Monaco", 
+ "Montenegro", "Mococco", "Mozambique", "Netherlands", "New Zealand", "Norway", "Panama", "Peru", "Philippines", "Poland", "Portugal", "Puerto Rico",
+ "Qatar", "Romania", "Russian Federation", "Saint Barthélemy", "Saint Lucia", "Saint Martin", "Sao Tome and Principe", "Serbia", "Seychelles", "Singapore",
+ "Sint Maarten", "Slovakia", "Slovenia", "South Africa", "Spain", "Sri Lanka", "Sweden", "Switzerland", "Taiwan, Republic Of China", "Thailand", "Tunisia",
+ "Turkey", "Turks and Caicos Islands", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uraquay", "Vanuatu", "Virgin Islands, British", "Virgin Islands, U.S."]
+state_list = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", 
+"IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM",
+"NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"]
 
 class mainwindow(tk.Tk):
     def __init__(self, *args, **kwargs):
@@ -77,12 +88,9 @@ class StatsFrame(tk.Frame):
         RangeButton1.place(x = 100, y = 1)
 
 
-
         def category_plot_button_action():
 
             url_check_string = range_query_input_1.get()#get the url that was entered
-
-
 
             #check it against the recognized urls 
             if url_check_string.startswith(("https://www.jamesedition.com/real_estate", "https://www.zillow.com/")) == True:
@@ -113,9 +121,9 @@ class StatsFrame(tk.Frame):
                         #print(listing_price)
                         #break
 
-                    #retrieving piece of the detail list
+                    #retrieving pieces of the detail list
                     for li in soup.find('ul', {"class":"details-list"}).find_all("li"):
-                        if (li.find('span', {"class":"name"}).getText(strip=True)) == "Location:":
+                        if (li.find('span', {"class":"name"}).getText(strip=True)) == "Location:": #gets the location with country,state(optional), city
                             listing_location_string = li.find('span', {"class":"value"}).getText(strip=True)
                             list_of_location_strings = listing_location_string.split(", ")
                             for location in list_of_location_strings:
@@ -128,11 +136,39 @@ class StatsFrame(tk.Frame):
                                 elif (location in country_list):
                                     location_country = location
                                     listing_dict["Country"] = location_country
-                    
+                        elif (li.find('span', {"class":"name"}).getText(strip=True)) == "Address:": #gets the listed address
+                            listing_address_string = li.find('span', {"class":"value"}).getText(strip=True)
+                            listing_address = listing_address_string.split("(Show Map)",1)[0]
+                            listing_dict["Address"] = listing_address
+                        elif (li.find('span', {"class":"name"}).getText(strip=True)) == "Property Type:": #gets the property type
+                            listing_property_type = li.find('span', {"class":"value"}).getText(strip=True)
+                            listing_dict["Property Type"] = listing_property_type
+                        elif (li.find('span', {"class":"name"}).getText(strip=True)) == "Bedrooms:": #gets the bedroom quantity (if applicable)
+                            listing_bedrooms = li.find('span', {"class":"value"}).getText(strip=True)
+                            listing_dict["Bedrooms"] = listing_bedrooms
+                        elif (li.find('span', {"class":"name"}).getText(strip=True)) == "Bathrooms:": #gets the bathroom quantity (if applicable)
+                            listing_bathrooms = li.find('span', {"class":"value"}).getText(strip=True)
+                            listing_dict["Bathrooms"] = listing_bathrooms
+                        elif (li.find('span', {"class":"name"}).getText(strip=True)) == "Living area:": #gets the living area (if applicable)
+                            listing_living_area = li.find('span', {"class":"value"}).getText(strip=True)
+                            listing_dict["Living Area"] = listing_living_area
+                        elif (li.find('span', {"class":"name"}).getText(strip=True)) == "Land area:": #gets the land area (if applicable)
+                            listing_land_area = li.find('span', {"class":"value"}).getText(strip=True)
+                            listing_dict["Land Area"] = listing_land_area
+                        
+                    description_retriever = soup.find('div', attrs={"class":"JE-listing-info__description"})#this gets the listing description
+                    for string in description_retriever.stripped_strings:
+                        description_string = string
+                        listing_dict["Listing Description"] = description_string
+                        break
+
                     for x, y in listing_dict.items():
                         print(x, y)
 
-                    subprocess.call(['./remove_website.sh'], shell=True)
+                    x = mycol.insert_one(listing_dict)
+                    
+
+                    #subprocess.call(['./remove_website.sh'], shell=True) #not needed as wget -O will overwrite the file anyways and is not necessary for proper usage
   
                 elif(return_val == 1):
                     #oops redirect
