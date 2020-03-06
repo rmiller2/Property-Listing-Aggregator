@@ -17,7 +17,7 @@ from bs4 import BeautifulSoup
 
 myclient = MongoClient("mongodb://localhost:27017/")
 mydb = myclient["Property_aggregator"]
-mycol = mydb["Properties"]
+#mycol = mydb["Properties"]
 
 country_list = ["Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Aruba", "Australia", "Austria", "Bahamas", "Barbados",
 "Belgium", "Belize", "Bermuda", "Bonaire, Sint Eustatius and Saba", "Brazil", "Bulgaria", "Canada", "Cayman Islands", 
@@ -28,9 +28,14 @@ country_list = ["Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Aruba"
  "Qatar", "Romania", "Russian Federation", "Saint Barthélemy", "Saint Lucia", "Saint Martin", "Sao Tome and Principe", "Serbia", "Seychelles", "Singapore",
  "Sint Maarten", "Slovakia", "Slovenia", "South Africa", "Spain", "Sri Lanka", "Sweden", "Switzerland", "Taiwan, Republic Of China", "Thailand", "Tunisia",
  "Turkey", "Turks and Caicos Islands", "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uraquay", "Vanuatu", "Virgin Islands, British", "Virgin Islands, U.S."]
+
 state_list = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", 
 "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM",
 "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"]
+
+options_list = {"Sold", "Unsold", "All", "By Country", "By state(U.S.)"}
+
+
 
 class mainwindow(tk.Tk):
     def __init__(self, *args, **kwargs):
@@ -40,57 +45,73 @@ class mainwindow(tk.Tk):
         self.title('Listing Aggregator')    #set title
         self.geometry("1000x800")         #set the size
         self.resizable(0, 0)              #fix the size
+        
+
+        #retriever of webpage layout
+        retrieve_frame = Frame(self)
+        retrieve_frame.grid(row=0, column=0, sticky=W+N, pady=(0,20))
+
+        Label(retrieve_frame, text='Enter URL to grab').grid(row=0, column=0, sticky=W) 
+
+        url_input_string = Entry(retrieve_frame) 
+        url_input_string.grid(row=0, column=1, sticky=W)
+
+        launch_grab_script_button = tk.Button(retrieve_frame, text="Run",  command=lambda: launch_grab_script_button_action())
+        launch_grab_script_button.grid(row=0, column=2, sticky=W)
+
+        #general purpose listbox
+        listbox_frame = Frame(self)
+        listbox_frame.grid(row=2, column=0, sticky=W)
+        
+        listbox_label = Label(listbox_frame, text='Placeholder').grid(row=0, column=0, sticky=W) 
+
+        button_frame = Frame(listbox_frame)
+        button_frame.grid(row=0, column=1, sticky=W)
+
+        back_button = tk.Button(button_frame, text="<-",  command=lambda: back_button_action())
+        back_button.grid(row=0, column=1, sticky=W)
+
+        select_button = tk.Button(button_frame, text="Select",  command=lambda: select_button_action())
+        select_button.grid(row=0, column=2, sticky=W)
+
+        check_sold_button = tk.Button(button_frame, text="Check Sold", state='disabled',  command=lambda: check_sold_button_action())
+        check_sold_button.grid(row=0, column=3, sticky=W)
+        #self.x['state'] = 'normal'
+
+        display_box = Listbox(listbox_frame, height=20, width=40)
+        default_col = mydb["Lists"]
+        obj = default_col.find({"name": "master_list"})
+        #for x in list(obj[0]['master_list']):
+        #    print(x)
+        blanklist = list(obj[0]['master_list'])
+
+        #for x in blanklist:
+        #    print(x)
+        #for x in blanklist:
+        display_box.insert(END, *blanklist)
+
+        display_box.grid(row=1, column=0, columnspan=3, sticky=W)
+
+        
+
+
+        def check_sold_button_action():
+            pass
+
+
+        def select_button_action():
+            test_var = display_box.get(ANCHOR)
+            #url_input_string.insert(0, test_var)
+            #pass
+
+
+        def back_button_action():
+            pass
 
     
+        def launch_grab_script_button_action():
 
-        #initial window setup
-        container = tk.Frame(self)
-        container.pack(side="top", fill="both", expand=True)
-        container.grid_rowconfigure(0, weight=1)
-        container.grid_columnconfigure(0, weight=1)
-
-        self.frames = {}
-
-        for frame_option in (StatsFrame, RangeFrame):
-            frame_name = frame_option.__name__
-            
-            frame = frame_option(parent=container, controller=self)
-            
-            self.frames[frame_name] = frame
-
-            frame.grid(row=0, column=0, sticky="nsew")
-
-        self.display_frame("StatsFrame")
-
-    def display_frame(self, frame_name):
-        frame = self.frames[frame_name]
-        frame.tkraise()
-
-
-class StatsFrame(tk.Frame):
-    def __init__(self, parent, controller):
-        tk.Frame.__init__(self, parent)
-        self.controller = controller
-        self.config(background='grey')
-
-        #frame label
-        stats_frame_label = tk.Label(self,background='grey', text="Statistics")
-        stats_frame_label.place(x=700, y=5)
-        stats_frame_label.config(font=("Courier", 30))
-
-        #tab buttons
-        StatsButton1 = tk.Button(self, text="Stats",highlightbackground='grey', command=lambda: controller.display_frame("StatsFrame"))
-        StatsButton1.config(height = 1, width = 8)
-        StatsButton1.place(x = 1, y = 1)
-        
-        RangeButton1 = tk.Button(self, text="Range",highlightbackground='grey', command=lambda: controller.display_frame("RangeFrame"))
-        RangeButton1.config(height = 1, width = 8)
-        RangeButton1.place(x = 100, y = 1)
-
-
-        def category_plot_button_action():
-
-            url_check_string = range_query_input_1.get()#get the url that was entered
+            url_check_string = url_input_string.get()#get the url that was entered
 
             #check it against the recognized urls 
             if url_check_string.startswith(("https://www.jamesedition.com/real_estate", "https://www.zillow.com/")) == True:
@@ -165,7 +186,10 @@ class StatsFrame(tk.Frame):
                     for x, y in listing_dict.items():
                         print(x, y)
 
+                    
+
                     x = mycol.insert_one(listing_dict)
+                    
                     
 
                     #subprocess.call(['./remove_website.sh'], shell=True) #not needed as wget -O will overwrite the file anyways and is not necessary for proper usage
@@ -180,61 +204,22 @@ class StatsFrame(tk.Frame):
                 print("Not from approved website,error")#print off error
                 #make this a display feature that shows if invalid
             
-        range_query_input_1 = tk.Entry(self, width = 20)
-        range_query_input_1.place(x = 300, y = 100)
-
-        #Launch category plot label
-        launch_category_plot_label = tk.Label(self, text="Run Script   ->")
-        launch_category_plot_label.place(x = 575, y = 115)
-
-        #category plot button
-        category_plot_button = tk.Button(self, text="Script",  command=lambda: category_plot_button_action())    
-        category_plot_button.config(height = 1, width = 8)
-        category_plot_button.place(x = 750, y = 115)
-
-
-
-class RangeFrame(tk.Frame):
-    def __init__(self, parent, controller):
-        tk.Frame.__init__(self, parent)
-        self.controller = controller
-        self.config(background='grey')
-
-        #frame label
-        Range_frame_label = tk.Label(self,background='grey', text="Range Search")
-        Range_frame_label.place(x=700, y=5)
-        Range_frame_label.config(font=("Courier", 30))
-
-
-
-        #tab buttons
-        StatsButton2 = tk.Button(self, text="Stats",highlightbackground='grey', command=lambda: controller.display_frame("StatsFrame"))
-        StatsButton2.config(height = 1, width = 8)
-        StatsButton2.place(x = 1, y = 1)
-        
-        RangeButton2 = tk.Button(self, text="Range",highlightbackground='grey', command=lambda: controller.display_frame("RangeFrame"))
-        RangeButton2.config(height = 1, width = 8)
-        RangeButton2.place(x = 100, y = 1)
-
-
-
-       
-  
 
 if __name__ == "__main__":
     app = mainwindow()
     app.mainloop()
 
-#how im thinking of connecting to the databases.
-#hopefully if we get neo4j up and running on aws and is available to ssh into 
-#using pexpect to ssh into
-#send the commands from this app -> pexpect -> aws neo4j instance
-
-#pxssh link https://www.pythonforbeginners.com/code-snippets-source-code/ssh-connection-with-python
-#pexpect link from stackoverflow https://stackoverflow.com/questions/15096667/ssh-and-send-commands-in-tkinter
-#github pexpect https://github.com/pexpect/pexpect
 
 
+
+
+#todo list
+
+#add a check if sold button that activates when a property is selected
+#figure out how to always get the usd instead of the native currency
+#get it set up to be able to edit the lists of properties during insertion
+#plan out how to do an update button so it updates everything including the lists
+# 
 
 
 
