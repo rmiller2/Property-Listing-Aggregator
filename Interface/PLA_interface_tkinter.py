@@ -36,6 +36,9 @@ state_list = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", 
 options_list = {"Sold", "Unsold", "All", "By Country", "By state(U.S.)"}
 
 
+current_menu_state = "master_list"
+previous_menu_state = "none"
+
 
 class mainwindow(tk.Tk):
     def __init__(self, *args, **kwargs):
@@ -100,7 +103,8 @@ class mainwindow(tk.Tk):
 
 
         def select_button_action():
-            test_var = display_box.get(ANCHOR)
+            selected_value = display_box.get(ANCHOR)
+
             #url_input_string.insert(0, test_var)
             #pass
 
@@ -125,6 +129,11 @@ class mainwindow(tk.Tk):
                     soup = BeautifulSoup(open("/Users/richardmiller/Documents/website_file_storage/test_file.html"), "html.parser")
 
                     listing_dict = {}   #create the dictionary to hold all of the relevant info from the web page to push to the database
+                    listing_images_list = [] 
+
+                    ref_id_found = False
+
+
 
                     #retrieve name of listing
                     headline_retriever = soup.find('h1', attrs={"class":"headline"})#this tests and gets the headline name of the listing 
@@ -176,6 +185,27 @@ class mainwindow(tk.Tk):
                         elif (li.find('span', {"class":"name"}).getText(strip=True)) == "Land area:": #gets the land area (if applicable)
                             listing_land_area = li.find('span', {"class":"value"}).getText(strip=True)
                             listing_dict["Land Area"] = listing_land_area
+                        elif (li.find('span', {"class":"name"}).getText(strip=True)) == "Internal Reference:": #gets the jamesedition internal reference id
+                            listing_internal_ref = li.find('span', {"class":"value"}).getText(strip=True)
+                            listing_dict["Internal Reference"] = listing_internal_ref
+                            ref_id_found = True
+                            image_link_file = open("image_links.txt", "w")
+
+                            for link in soup.find_all('a', href=True):
+                                if link['href'].startswith("https://img.jamesedition.com/listing_images"):
+                                    listing_images_list.append(link['href'])
+                                    image_link_file.write(link['href']+"\n")
+                            image_link_file.close()
+
+                            listing_dict["images"] = listing_images_list
+                            subprocess.call(['./get_images.sh ' + "image_links.txt " + listing_internal_ref], shell=True)
+                            
+
+                    
+                    
+
+
+                            
                         
                     description_retriever = soup.find('div', attrs={"class":"JE-listing-info__description"})#this gets the listing description
                     for string in description_retriever.stripped_strings:
@@ -187,9 +217,10 @@ class mainwindow(tk.Tk):
                         print(x, y)
 
                     
-
+                    mycol = mydb["Properties"]
                     x = mycol.insert_one(listing_dict)
                     
+                    subprocess.call(['./remove_text_file.sh'], shell=True)
                     
 
                     #subprocess.call(['./remove_website.sh'], shell=True) #not needed as wget -O will overwrite the file anyways and is not necessary for proper usage
