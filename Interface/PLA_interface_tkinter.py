@@ -33,12 +33,13 @@ state_list = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", 
 "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM",
 "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"]
 
-options_list = {"Sold", "Unsold", "All", "By Country", "By state(U.S.)"}
+options_list = ["Sold", "Unsold", "All", "By Country", "By state(U.S.)"]
 
 
 current_menu_state = "master_list"
 previous_menu_state = "none"
 
+menu_stack = ["master_list"]
 
 class mainwindow(tk.Tk):
     def __init__(self, *args, **kwargs):
@@ -66,12 +67,12 @@ class mainwindow(tk.Tk):
         listbox_frame = Frame(self)
         listbox_frame.grid(row=2, column=0, sticky=W)
         
-        listbox_label = Label(listbox_frame, text='Placeholder').grid(row=0, column=0, sticky=W) 
+        listbox_label = Label(listbox_frame, text='Placeholder').grid(row=0, column=0,  sticky=W) 
 
         button_frame = Frame(listbox_frame)
         button_frame.grid(row=0, column=1, sticky=W)
 
-        back_button = tk.Button(button_frame, text="<-",  command=lambda: back_button_action())
+        back_button = tk.Button(button_frame, text="<-", state='disabled',  command=lambda: back_button_action())
         back_button.grid(row=0, column=1, sticky=W)
 
         select_button = tk.Button(button_frame, text="Select",  command=lambda: select_button_action())
@@ -84,8 +85,10 @@ class mainwindow(tk.Tk):
         display_box = Listbox(listbox_frame, height=20, width=40)
         default_col = mydb["Lists"]
         obj = default_col.find({"name": "master_list"})
+
         #for x in list(obj[0]['master_list']):
         #    print(x)
+
         blanklist = list(obj[0]['master_list'])
 
         #for x in blanklist:
@@ -93,7 +96,7 @@ class mainwindow(tk.Tk):
         #for x in blanklist:
         display_box.insert(END, *blanklist)
 
-        display_box.grid(row=1, column=0, columnspan=3, sticky=W)
+        display_box.grid(row=1, column=0, columnspan=3, padx=5, sticky=W)
 
         
 
@@ -103,14 +106,53 @@ class mainwindow(tk.Tk):
 
 
         def select_button_action():
-            selected_value = display_box.get(ANCHOR)
+            selected_value = display_box.get(ANCHOR)                    #gets the selected value 
 
-            #url_input_string.insert(0, test_var)
+            #previous_menu_state = current_menu_state                    #change menu states to retain for back button
+
+            menu_stack.append(selected_value)                           #pushes the current menu item to top of stack
+
+            temp_col = mydb["Lists"]
+            obj = temp_col.find({"name": selected_value})
+
+            templist = list(obj[0]['list'])
+
+            display_box.delete('0','end')
+
+            display_box.insert(END, *templist)
+
+            back_button['state'] = NORMAL
+
+            
+
+
+            #url_input_string.insert(0, selected_value)
+
             #pass
 
 
         def back_button_action():
-            pass
+            #current_menu_state = previous_menu_state                    #change the menu state back to the previous
+
+            menu_stack.pop()
+
+            current_top_stack = menu_stack[-1]
+
+            temp_col = mydb["Lists"]
+            obj = temp_col.find({"name": current_top_stack})
+
+            if(current_top_stack == "master_list"):
+                templist = list(obj[0]['master_list'])
+                back_button['state'] = DISABLED
+            else:
+                templist = list(obj[0]['list'])
+
+            display_box.delete('0','end')
+
+            display_box.insert(END, *templist)
+            
+
+            #pass
 
     
         def launch_grab_script_button_action():
@@ -133,8 +175,6 @@ class mainwindow(tk.Tk):
 
                     ref_id_found = False
 
-
-
                     #retrieve name of listing
                     headline_retriever = soup.find('h1', attrs={"class":"headline"})#this tests and gets the headline name of the listing 
                     for string in headline_retriever.stripped_strings:
@@ -154,72 +194,137 @@ class mainwindow(tk.Tk):
                     #retrieving pieces of the detail list
                     for li in soup.find('ul', {"class":"details-list"}).find_all("li"):
                         if (li.find('span', {"class":"name"}).getText(strip=True)) == "Location:": #gets the location with country,state(optional), city
+
                             listing_location_string = li.find('span', {"class":"value"}).getText(strip=True)
                             list_of_location_strings = listing_location_string.split(", ")
+
                             for location in list_of_location_strings:
                                 if (location not in country_list and location not in state_list):
                                     location_city = location
                                     listing_dict["City"] = location_city
+
                                 elif (location in state_list):
                                     location_state = location
                                     listing_dict["State"] = location_state
+
                                 elif (location in country_list):
                                     location_country = location
                                     listing_dict["Country"] = location_country
-                        elif (li.find('span', {"class":"name"}).getText(strip=True)) == "Address:": #gets the listed address
+
+                        elif (li.find('span', {"class":"name"}).getText(strip=True)) == "Address:":                 #gets the listed address
                             listing_address_string = li.find('span', {"class":"value"}).getText(strip=True)
                             listing_address = listing_address_string.split("(Show Map)",1)[0]
                             listing_dict["Address"] = listing_address
-                        elif (li.find('span', {"class":"name"}).getText(strip=True)) == "Property Type:": #gets the property type
+
+                        elif (li.find('span', {"class":"name"}).getText(strip=True)) == "Property Type:":           #gets the property type
                             listing_property_type = li.find('span', {"class":"value"}).getText(strip=True)
                             listing_dict["Property Type"] = listing_property_type
-                        elif (li.find('span', {"class":"name"}).getText(strip=True)) == "Bedrooms:": #gets the bedroom quantity (if applicable)
+
+                        elif (li.find('span', {"class":"name"}).getText(strip=True)) == "Bedrooms:":                #gets the bedroom quantity (if applicable)
                             listing_bedrooms = li.find('span', {"class":"value"}).getText(strip=True)
                             listing_dict["Bedrooms"] = listing_bedrooms
-                        elif (li.find('span', {"class":"name"}).getText(strip=True)) == "Bathrooms:": #gets the bathroom quantity (if applicable)
+
+                        elif (li.find('span', {"class":"name"}).getText(strip=True)) == "Bathrooms:":               #gets the bathroom quantity (if applicable)
                             listing_bathrooms = li.find('span', {"class":"value"}).getText(strip=True)
                             listing_dict["Bathrooms"] = listing_bathrooms
-                        elif (li.find('span', {"class":"name"}).getText(strip=True)) == "Living area:": #gets the living area (if applicable)
+
+                        elif (li.find('span', {"class":"name"}).getText(strip=True)) == "Living area:":             #gets the living area (if applicable)
                             listing_living_area = li.find('span', {"class":"value"}).getText(strip=True)
                             listing_dict["Living Area"] = listing_living_area
-                        elif (li.find('span', {"class":"name"}).getText(strip=True)) == "Land area:": #gets the land area (if applicable)
+
+                        elif (li.find('span', {"class":"name"}).getText(strip=True)) == "Land area:":               #gets the land area (if applicable)
                             listing_land_area = li.find('span', {"class":"value"}).getText(strip=True)
                             listing_dict["Land Area"] = listing_land_area
-                        elif (li.find('span', {"class":"name"}).getText(strip=True)) == "Internal Reference:": #gets the jamesedition internal reference id
+
+                        elif (li.find('span', {"class":"name"}).getText(strip=True)) == "Internal Reference:":      #gets the jamesedition internal reference id
                             listing_internal_ref = li.find('span', {"class":"value"}).getText(strip=True)
                             listing_dict["Internal Reference"] = listing_internal_ref
                             ref_id_found = True
                             image_link_file = open("image_links.txt", "w")
 
-                            for link in soup.find_all('a', href=True):
+                            
+                            for link in soup.find_all('a', href=True):                                               #retrieves all the image names
                                 if link['href'].startswith("https://img.jamesedition.com/listing_images"):
                                     listing_images_list.append(link['href'])
                                     image_link_file.write(link['href']+"\n")
                             image_link_file.close()
 
+
+                            #adds the list of image names to the dict
                             listing_dict["images"] = listing_images_list
                             subprocess.call(['./get_images.sh ' + "image_links.txt " + listing_internal_ref], shell=True)
                             
 
-                    
-                    
-
-
-                            
-                        
-                    description_retriever = soup.find('div', attrs={"class":"JE-listing-info__description"})#this gets the listing description
+                    #retrieves listing description   
+                    description_retriever = soup.find('div', attrs={"class":"JE-listing-info__description"})
                     for string in description_retriever.stripped_strings:
                         description_string = string
                         listing_dict["Listing Description"] = description_string
                         break
 
+                    #print out the listing dict before pushing to DB
                     for x, y in listing_dict.items():
                         print(x, y)
 
                     
+
+                    #push to DB
                     mycol = mydb["Properties"]
                     x = mycol.insert_one(listing_dict)
+
+
+
+
+                    #pseudocode for adding to all the different lists
                     
+                
+                    #normal full entry will be entered into the properties collection
+                    #everywhere else will have the form of
+                        # name,city,country -> key=internal ref 
+
+
+                    #add to unsold
+                    
+                    #check if country exists in db
+                        #if yes, add to country
+                            # if country is usa, check state
+                                # if exists, add to state
+                        #if no, create country and add
+
+                       
+
+
+
+
+
+
+
+
+
+
+
+                    #start adding code for insterting into the different list types
+                    #***********************************************************************
+
+
+
+
+                    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                    #call remove temp text file
                     subprocess.call(['./remove_text_file.sh'], shell=True)
                     
 
