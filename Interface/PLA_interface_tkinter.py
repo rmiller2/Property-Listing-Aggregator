@@ -15,9 +15,13 @@ from tkinter import ttk
 from pymongo import MongoClient
 from bs4 import BeautifulSoup
 
+
+
+#database connection
 myclient = MongoClient("mongodb://localhost:27017/")
 mydb = myclient["Property_aggregator"]
-#mycol = mydb["Properties"]
+
+
 
 country_list = ["Andorra", "Angola", "Antigua and Barbuda", "Argentina", "Aruba", "Australia", "Austria", "Bahamas", "Barbados",
 "Belgium", "Belize", "Bermuda", "Bonaire, Sint Eustatius and Saba", "Brazil", "Bulgaria", "Canada", "Cayman Islands", 
@@ -40,6 +44,11 @@ current_menu_state = "master_list"
 previous_menu_state = "none"
 
 menu_stack = ["master_list"]
+property_id = 0
+
+master_ref = "temp"
+gallery_max = 0
+gallery_place = 0
 
 class mainwindow(tk.Tk):
     def __init__(self, *args, **kwargs):
@@ -47,13 +56,14 @@ class mainwindow(tk.Tk):
 
         #window settings
         self.title('Listing Aggregator')    #set title
-        self.geometry("1000x800")         #set the size
-        self.resizable(0, 0)              #fix the size
+        self.geometry("1000x800")           #set the size
+        self.resizable(0, 0)                #fix the size
+        
         
 
         #retriever of webpage layout
         retrieve_frame = Frame(self)
-        retrieve_frame.grid(row=0, column=0, sticky=W+N, pady=(0,20))
+        retrieve_frame.grid(row=0, column=0, sticky=W+N)
 
         Label(retrieve_frame, text='Enter URL to grab').grid(row=0, column=0, sticky=W) 
 
@@ -65,7 +75,7 @@ class mainwindow(tk.Tk):
 
         #general purpose listbox
         listbox_frame = Frame(self)
-        listbox_frame.grid(row=2, column=0, sticky=W)
+        listbox_frame.grid(row=1, column=0, sticky=W+N)
         
         listbox_label = Label(listbox_frame, text='Placeholder').grid(row=0, column=0,  sticky=W) 
 
@@ -78,64 +88,320 @@ class mainwindow(tk.Tk):
         select_button = tk.Button(button_frame, text="Select",  command=lambda: select_button_action())
         select_button.grid(row=0, column=2, sticky=W)
 
-        check_sold_button = tk.Button(button_frame, text="Check Sold", state='disabled',  command=lambda: check_sold_button_action())
+        check_sold_button = tk.Button(button_frame, text="Check Sold",  command=lambda: check_sold_button_action())
         check_sold_button.grid(row=0, column=3, sticky=W)
-        #self.x['state'] = 'normal'
 
         display_box = Listbox(listbox_frame, height=20, width=40)
         default_col = mydb["Lists"]
         obj = default_col.find({"name": "master_list"})
 
-        #for x in list(obj[0]['master_list']):
-        #    print(x)
-
         blanklist = list(obj[0]['master_list'])
 
-        #for x in blanklist:
-        #    print(x)
-        #for x in blanklist:
         display_box.insert(END, *blanklist)
 
         display_box.grid(row=1, column=0, columnspan=3, padx=5, sticky=W)
 
+
+        #listing frame
+        #listing_frame = Frame(self, highlightbackground="black", highlightthickness=1)
+        listing_frame = Frame(self)
+        listing_frame.grid(row=1, column=1, rowspan=20, sticky=W+N, padx=(30,0))
+
+
+        #listing photo gallery
+        gallery_button = tk.Button(listing_frame, text="Launch Photo Gallery",state='disabled', command=lambda: launch_gallery_button_action())
+        gallery_button.grid(row=0, column=1, sticky=W)
+
+        #listing name 
+        Label(listing_frame, text='Property Name:', font=("", 16)).grid(row=1, column=0, sticky=N+W) 
+        name_box = Listbox(listing_frame, height=1, width=30)
+        name_box.grid(row=1, column=1, sticky=W)
+
+        #listing price 
+        Label(listing_frame, text='Price:', font=("", 16)).grid(row=2, column=0, sticky=N+W) 
+        price_box = Listbox(listing_frame, height=1, width=15)
+        price_box.grid(row=2, column=1, sticky=W)
+
+        #listing city 
+        Label(listing_frame, text='City:', font=("", 16)).grid(row=3, column=0, sticky=N+W) 
+        city_box = Listbox(listing_frame, height=1, width=15)
+        city_box.grid(row=3, column=1, sticky=W)
+
+        #listing state(if applicable) 
+        Label(listing_frame, text='State:', font=("", 16)).grid(row=4, column=0, sticky=N+W) 
+        state_box = Listbox(listing_frame, height=1, width=15)
+        state_box.grid(row=4, column=1, sticky=W)
+
+        #listing country 
+        Label(listing_frame, text='Country:', font=("", 16)).grid(row=5, column=0, sticky=N+W) 
+        country_box = Listbox(listing_frame, height=1, width=15)
+        country_box.grid(row=5, column=1, sticky=W)
+
+        #listing address 
+        Label(listing_frame, text='Address:', font=("", 16)).grid(row=6, column=0, sticky=N+W) 
+        address_box = Listbox(listing_frame, height=1, width=15)
+        address_box.grid(row=6, column=1, sticky=W)
+
+        #listing property type 
+        Label(listing_frame, text='Type:', font=("", 16)).grid(row=7, column=0, sticky=N+W) 
+        type_box = Listbox(listing_frame, height=1, width=15)
+        type_box.grid(row=7, column=1, sticky=W)
+
+        #listing bedrooms 
+        Label(listing_frame, text='Bedrooms:', font=("", 16)).grid(row=8, column=0, sticky=N+W) 
+        bedrooms_box = Listbox(listing_frame, height=1, width=15)
+        bedrooms_box.grid(row=8, column=1, sticky=W)
+
+        #listing bathrooms 
+        Label(listing_frame, text='Bathrooms:', font=("", 16)).grid(row=9, column=0, sticky=N+W) 
+        bathrooms_box = Listbox(listing_frame, height=1, width=15)
+        bathrooms_box.grid(row=9, column=1, sticky=W)
+
+        #listing land area
+        Label(listing_frame, text='Land Area:', font=("", 16)).grid(row=10, column=0, sticky=N+W) 
+        land_area_box = Listbox(listing_frame, height=1, width=15)
+        land_area_box.grid(row=10, column=1, sticky=W)
+
+        #listing living area 
+        Label(listing_frame, text='Living Area:', font=("", 16)).grid(row=11, column=0, sticky=N+W) 
+        living_area_box = Listbox(listing_frame, height=1, width=15)
+        living_area_box.grid(row=11, column=1, sticky=W)
+
+        #listing internal ref 
+        Label(listing_frame, text='Internal Ref:', font=("", 16)).grid(row=12, column=0, sticky=N+W) 
+        internal_ref_box = Listbox(listing_frame, height=1, width=15)
+        internal_ref_box.grid(row=12, column=1, sticky=W)
+
+        #listing property description 
+        Label(listing_frame, text='Description:', font=("", 16)).grid(row=13, column=0, sticky=N+W) 
+        description_box = Text(listing_frame, height=20, width=50, highlightbackground="black", highlightthickness=1)
+        description_box.grid(row=13, column=1, sticky=W)
+       
+
         
+
+        def launch_gallery_button_action():
+            global master_ref
+            global gallery_max
+            global gallery_place
+            test_width = 750
+
+            if (master_ref != "temp"):
+                gallery_ref = master_ref    #internal ref for lookup
+
+                temp_col = mydb["Properties"]
+                item1 = temp_col.find({"Internal Reference": gallery_ref})
+    
+                image_count = item1[0]["image count"]
+
+                gallery_max = image_count - 1
+
+                gallery_place = 0
+
+                path = "/Users/richardmiller/Documents/website_file_storage/" + gallery_ref + "/" + gallery_ref + "_0.jpg"  
+                sub_path = "/Users/richardmiller/Documents/website_file_storage/" + gallery_ref + "/" + gallery_ref
+                print(path)
+
+
+                gallery_window = tk.Toplevel()
+                gallery_window.geometry("%dx%d%+d%+d" % (925, 525, 250, 125))  #define the window
+                gallery_window.columnconfigure(0, weight=1)
+                
+
+                main_frame = Frame(gallery_window)                              #main frame for window
+                main_frame.grid(row=0,column=0, sticky=NSEW)
+
+
+                myimage = PIL.Image.open(path)
+
+                wpercent = (test_width/float(myimage.size[0]))
+                hsize = int((float(myimage.size[1])*float(wpercent)))
+                myimage = myimage.resize((test_width,hsize),PIL.Image.ANTIALIAS)
+
+                render = ImageTk.PhotoImage(myimage)
+                img = Label(main_frame, image=render)
+                img.image = render
+                img.grid(row=0,column=1, sticky=NSEW)
+
+                photo_back_button = tk.Button(main_frame, text="back", state='disabled',  command=lambda: photo_back_button_action(img, photo_next_button, photo_back_button, sub_path))
+                photo_back_button.grid(row=0, column=0, sticky=N+S+E)
+
+                photo_next_button = tk.Button(main_frame, text="next",  command=lambda: photo_next_button_action(img, photo_next_button, photo_back_button, sub_path))
+                photo_next_button.grid(row=0, column=2, sticky=N+S+W)
+
+                main_frame.columnconfigure(0, weight=1)
+                main_frame.columnconfigure(1, weight=1)
+                main_frame.columnconfigure(2, weight=1)
+
+
+        def photo_back_button_action(image1, button1, button2, sub_path1):
+            global gallery_max
+            global gallery_place
+            global master_ref
+            test_width = 750
+
+            gallery_place = gallery_place - 1
+
+            path = sub_path1 + "_" + str(gallery_place) + ".jpg"
+
+            myimage = PIL.Image.open(path)
+
+            wpercent = (test_width/float(myimage.size[0]))
+            hsize = int((float(myimage.size[1])*float(wpercent)))
+            myimage = myimage.resize((test_width,hsize),PIL.Image.ANTIALIAS)
+
+            render = ImageTk.PhotoImage(myimage)
+            image1.config(image=render)
+            image1.image = render
+ 
+            if(gallery_place < gallery_max):
+                button1['state'] = NORMAL
+
+            if(gallery_place == 0):
+                button2['state'] = DISABLED
+
+        def photo_next_button_action(image1, button1, button2, sub_path1):
+            global gallery_max
+            global gallery_place
+            global master_ref
+            test_width = 750
+
+            gallery_place = gallery_place + 1
+
+            path = sub_path1 + "_" + str(gallery_place) + ".jpg"
+
+            myimage = PIL.Image.open(path)
+
+            wpercent = (test_width/float(myimage.size[0]))
+            hsize = int((float(myimage.size[1])*float(wpercent)))
+            myimage = myimage.resize((test_width,hsize),PIL.Image.ANTIALIAS)
+
+            render = ImageTk.PhotoImage(myimage)
+            image1.config(image=render)
+            image1.image = render
+ 
+            if(gallery_place > 0):
+                button2['state'] = NORMAL
+
+            if(gallery_place == gallery_max):
+                button1['state'] = DISABLED
 
 
         def check_sold_button_action():
             pass
 
-
         def select_button_action():
             selected_value = display_box.get(ANCHOR)                    #gets the selected value 
 
-            #previous_menu_state = current_menu_state                    #change menu states to retain for back button
+            if(menu_stack[-1] in country_list):
+                global property_id
+                property_id = 1
+                temp_col = mydb["Countries"]
+                temp_string = "properties." + selected_value
+                item = temp_col.find({'country':menu_stack[-1]},{temp_string})
+                temp_ref = item[0]['properties'][selected_value]
+                print("temp ref = " + temp_ref)
 
-            menu_stack.append(selected_value)                           #pushes the current menu item to top of stack
+                temp_col = mydb["Properties"]
+                item1 = temp_col.find({"Internal Reference": temp_ref})
+                
+                temp_usage_list = item1[0]["usage list"]
 
-            temp_col = mydb["Lists"]
-            obj = temp_col.find({"name": selected_value})
+                for x in range(len(temp_usage_list)):
+                    print(temp_usage_list[x])
 
-            templist = list(obj[0]['list'])
+                if(temp_usage_list[0] == 1):
+                    name_box.delete('0', 'end')
+                    name_box.insert(END, item1[0]["Title"])
+                if(temp_usage_list[1] == 1):
+                    price_box.delete('0', 'end')
+                    price_box.insert(END, item1[0]["Price"])
+                if(temp_usage_list[2] == 1):
+                    city_box.delete('0', 'end')
+                    city_box.insert(END, item1[0]["City"])
+                if(temp_usage_list[3] == 1):
+                    state_box.delete('0', 'end')
+                    state_box.insert(END, item1[0]["State"])
+                if(temp_usage_list[4] == 1):
+                    country_box.delete('0', 'end')
+                    country_box.insert(END, item1[0]["Country"])
+                if(temp_usage_list[5] == 1):
+                    address_box.delete('0', 'end')
+                    address_box.insert(END, item1[0]["Address"])
+                if(temp_usage_list[6] == 1):
+                    type_box.delete('0', 'end')
+                    type_box.insert(END, item1[0]["Property Type"])
+                if(temp_usage_list[7] == 1):
+                    bedrooms_box.delete('0', 'end')
+                    bedrooms_box.insert(END, item1[0]["Bedrooms"])
+                if(temp_usage_list[8] == 1):
+                    bathrooms_box.delete('0', 'end')
+                    bathrooms_box.insert(END, item1[0]["Bathrooms"])
+                if(temp_usage_list[9] == 1):
+                    living_area_box.delete('0', 'end')
+                    living_area_box.insert(END, item1[0]["Living Area"])
+                if(temp_usage_list[10] == 1):
+                    land_area_box.delete('0', 'end')
+                    land_area_box.insert(END, item1[0]["Land Area"])
+                if(temp_usage_list[11] == 1):
+                    internal_ref_box.delete('0', 'end')
+                    internal_ref_box.insert(END, item1[0]["Internal Reference"])
+                    global master_ref
+                    master_ref = item1[0]["Internal Reference"]
+                    print("master ref = ")
+                    print(master_ref)
+                if(temp_usage_list[13] == 1):
+                    description_box.delete('1.0', END)
+                    description_box.insert(INSERT, item1[0]["Listing Description"])
+                
+                gallery_button['state'] = NORMAL
 
-            display_box.delete('0','end')
+                print("number of images = ")
+                print(item1[0]["image count"])
 
-            display_box.insert(END, *templist)
+            elif(selected_value in country_list):
+                menu_stack.append(selected_value)                           #pushes the current menu item to top of stack
+                temp_col = mydb["Countries"]
+                obj = temp_col.find({"country": selected_value})
+                templist = list(obj[0]['properties'])
+                display_box.delete('0','end')
+                display_box.insert(END, *templist)
+                back_button['state'] = NORMAL
 
-            back_button['state'] = NORMAL
+            else:
+                menu_stack.append(selected_value)                           #pushes the current menu item to top of stack
+                temp_col = mydb["Lists"]
+                obj = temp_col.find({"name": selected_value})
+                templist = list(obj[0]['list'])
+                display_box.delete('0','end')
+                display_box.insert(END, *templist)
+                back_button['state'] = NORMAL
 
-            
 
-
-            #url_input_string.insert(0, selected_value)
-
-            #pass
 
 
         def back_button_action():
             #current_menu_state = previous_menu_state                    #change the menu state back to the previous
+            global property_id
+
+            if (property_id == 1):
+                name_box.delete('0', 'end')
+                price_box.delete('0', 'end')
+                city_box.delete('0', 'end')
+                state_box.delete('0', 'end')
+                country_box.delete('0', 'end')
+                address_box.delete('0', 'end')
+                type_box.delete('0', 'end')
+                bedrooms_box.delete('0', 'end')
+                bathrooms_box.delete('0', 'end')
+                living_area_box.delete('0', 'end')
+                land_area_box.delete('0', 'end')
+                internal_ref_box.delete('0', 'end')
+                description_box.delete('1.0', END)
+                property_id = 0
+                gallery_button['state'] = DISABLED
 
             menu_stack.pop()
-
             current_top_stack = menu_stack[-1]
 
             temp_col = mydb["Lists"]
@@ -148,13 +414,9 @@ class mainwindow(tk.Tk):
                 templist = list(obj[0]['list'])
 
             display_box.delete('0','end')
-
             display_box.insert(END, *templist)
             
-
-            #pass
-
-    
+            
         def launch_grab_script_button_action():
 
             url_check_string = url_input_string.get()#get the url that was entered
@@ -172,6 +434,9 @@ class mainwindow(tk.Tk):
 
                     listing_dict = {}   #create the dictionary to hold all of the relevant info from the web page to push to the database
                     listing_images_list = [] 
+                    condensed_dict = {}
+
+                    usage_list = [0,0,0,0,0,0,0,0,0,0,0,0,0,0]
 
                     ref_id_found = False
 
@@ -180,6 +445,8 @@ class mainwindow(tk.Tk):
                     for string in headline_retriever.stripped_strings:
                         listing_name = string
                         listing_dict["Title"] = listing_name
+                        
+                        usage_list[0] = 1
                         #print(listing_name)
                         break
 
@@ -188,6 +455,7 @@ class mainwindow(tk.Tk):
                     for string in price_retriever.stripped_strings:
                         listing_price = string
                         listing_dict["Price"] = listing_price
+                        usage_list[1] = 1
                         #print(listing_price)
                         #break
 
@@ -202,43 +470,53 @@ class mainwindow(tk.Tk):
                                 if (location not in country_list and location not in state_list):
                                     location_city = location
                                     listing_dict["City"] = location_city
+                                    usage_list[2] = 1
 
                                 elif (location in state_list):
                                     location_state = location
                                     listing_dict["State"] = location_state
+                                    usage_list[3] = 1
 
                                 elif (location in country_list):
                                     location_country = location
                                     listing_dict["Country"] = location_country
+                                    usage_list[4] = 1
 
                         elif (li.find('span', {"class":"name"}).getText(strip=True)) == "Address:":                 #gets the listed address
                             listing_address_string = li.find('span', {"class":"value"}).getText(strip=True)
                             listing_address = listing_address_string.split("(Show Map)",1)[0]
                             listing_dict["Address"] = listing_address
+                            usage_list[5] = 1
 
-                        elif (li.find('span', {"class":"name"}).getText(strip=True)) == "Property Type:":           #gets the property type
+                        elif (li.find('span', {"class":"name"}).getText(strip=True)) == "Property type:":           #gets the property type
                             listing_property_type = li.find('span', {"class":"value"}).getText(strip=True)
                             listing_dict["Property Type"] = listing_property_type
+                            usage_list[6] = 1
 
                         elif (li.find('span', {"class":"name"}).getText(strip=True)) == "Bedrooms:":                #gets the bedroom quantity (if applicable)
                             listing_bedrooms = li.find('span', {"class":"value"}).getText(strip=True)
                             listing_dict["Bedrooms"] = listing_bedrooms
+                            usage_list[7] = 1
 
                         elif (li.find('span', {"class":"name"}).getText(strip=True)) == "Bathrooms:":               #gets the bathroom quantity (if applicable)
                             listing_bathrooms = li.find('span', {"class":"value"}).getText(strip=True)
                             listing_dict["Bathrooms"] = listing_bathrooms
+                            usage_list[8] = 1
 
                         elif (li.find('span', {"class":"name"}).getText(strip=True)) == "Living area:":             #gets the living area (if applicable)
                             listing_living_area = li.find('span', {"class":"value"}).getText(strip=True)
                             listing_dict["Living Area"] = listing_living_area
+                            usage_list[9] = 1
 
                         elif (li.find('span', {"class":"name"}).getText(strip=True)) == "Land area:":               #gets the land area (if applicable)
                             listing_land_area = li.find('span', {"class":"value"}).getText(strip=True)
                             listing_dict["Land Area"] = listing_land_area
+                            usage_list[10] = 1
 
                         elif (li.find('span', {"class":"name"}).getText(strip=True)) == "Internal Reference:":      #gets the jamesedition internal reference id
                             listing_internal_ref = li.find('span', {"class":"value"}).getText(strip=True)
                             listing_dict["Internal Reference"] = listing_internal_ref
+                            usage_list[11] = 1
                             ref_id_found = True
                             image_link_file = open("image_links.txt", "w")
 
@@ -252,7 +530,9 @@ class mainwindow(tk.Tk):
 
                             #adds the list of image names to the dict
                             listing_dict["images"] = listing_images_list
-                            subprocess.call(['./get_images.sh ' + "image_links.txt " + listing_internal_ref], shell=True)
+                            listing_dict["image count"] = len(listing_images_list)
+                            usage_list[12] = 1
+                            subprocess.call(['./get_images.sh ' + "image_links.txt " + listing_internal_ref], shell=True) #uncomment to actually run, commented for testing to save bandwidth
                             
 
                     #retrieves listing description   
@@ -260,7 +540,12 @@ class mainwindow(tk.Tk):
                     for string in description_retriever.stripped_strings:
                         description_string = string
                         listing_dict["Listing Description"] = description_string
+                        usage_list[13] = 1
                         break
+
+                    
+                    listing_dict["usage list"] = usage_list
+                    
 
                     #print out the listing dict before pushing to DB
                     for x, y in listing_dict.items():
@@ -270,7 +555,38 @@ class mainwindow(tk.Tk):
 
                     #push to DB
                     mycol = mydb["Properties"]
-                    x = mycol.insert_one(listing_dict)
+                    x = mycol.insert_one(listing_dict) #inserting into the main properties holder
+
+
+                    #adding the country if it doesnt exist in db yet
+                    mycol = mydb["Countries"]
+
+                    if(mycol.count_documents({"country": location_country}, limit = 1) != 0):                   #updates the country with the new listing
+                        temp_string = "properties." + listing_name 
+                        mycol.update({"country": location_country},{'$set':{temp_string:listing_internal_ref}})
+
+                    else:
+                        condensed_dict["country"] = location_country
+                        mycol.insert_one(condensed_dict)                #adds the country to the countries list
+
+                        temp_string = "properties." + listing_name 
+                        test_list = {}
+                        test_list[listing_name] = listing_internal_ref
+
+                        mycol.update({"country": location_country},{'$set':{temp_string:listing_internal_ref}})
+
+                        mycol = mydb["Lists"]
+
+                        mycol.update({'name':'By Country'},{'$push':{'list':location_country}})     #push the new country to the updated list
+                        mycol.update({'name':'By Country'},{'$push':{'list':{'$each':[], '$sort': 1}}}) 
+
+
+                    
+
+            
+
+
+
 
 
 
@@ -293,35 +609,8 @@ class mainwindow(tk.Tk):
 
                        
 
-
-
-
-
-
-
-
-
-
-
                     #start adding code for insterting into the different list types
                     #***********************************************************************
-
-
-
-
-                    
-
-
-
-
-
-
-
-
-
-
-
-
 
 
                     #call remove temp text file
@@ -344,53 +633,3 @@ class mainwindow(tk.Tk):
 if __name__ == "__main__":
     app = mainwindow()
     app.mainloop()
-
-
-
-
-
-#todo list
-
-#add a check if sold button that activates when a property is selected
-#figure out how to always get the usd instead of the native currency
-#get it set up to be able to edit the lists of properties during insertion
-#plan out how to do an update button so it updates everything including the lists
-# 
-
-
-
-
-#********code for image gallery***********
-
-#image_list = ['cat1.jpg', 'cat2.jpg', 'cat3.jpg']
-#text_list = ['cat1', 'cat2', 'cat3']
-#current = 0
-
-#def move(delta):
-#    global current, image_list
-#    if not (0 <= current + delta < len(image_list)):
-#        tkMessageBox.showinfo('End', 'No more image.')
-#        return
-#    current += delta
-#    image = Image.open(image_list[current])
-#    photo = ImageTk.PhotoImage(image)
-#    label['text'] = text_list[current]
-#    label['image'] = photo
-#    label.photo = photo
-
-
-#root = Tkinter.Tk()
-
-#label = Tkinter.Label(root, compound=Tkinter.TOP)
-#label.pack()
-
-#frame = Tkinter.Frame(root)
-#frame.pack()
-
-#Tkinter.Button(frame, text='Previous picture', command=lambda: move(-1)).pack(side=Tkinter.LEFT)
-#Tkinter.Button(frame, text='Next picture', command=lambda: move(+1)).pack(side=Tkinter.LEFT)
-#Tkinter.Button(frame, text='Quit', command=root.quit).pack(side=Tkinter.LEFT)
-
-#move(0)
-
-#root.mainloop()
